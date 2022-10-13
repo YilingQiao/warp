@@ -130,6 +130,14 @@ class SimRenderer(warp.render.UsdRenderer):
             if (self.model.spring_count):
                 self.render_line_list("springs", particle_q, self.model.spring_indices.numpy().flatten(), [], 0.1)
 
+        # render lbs
+        if (self.model.lbs_count):
+            for b in range(self.model.lbs_count):
+                vert = self.model.lbs_verts.numpy() 
+                face = self.model.lbs_faces.numpy().flatten()
+                self.render_mesh("lbs_" + str(b), vert, face)
+
+
         # render muscles
         if (self.model.muscle_count):
             

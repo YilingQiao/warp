@@ -173,6 +173,7 @@ class State:
         
         self.particle_count = 0
         self.body_count = 0
+        self.lbsverts_count = 0
 
     def clear_forces(self):
 
@@ -331,6 +332,7 @@ class Model:
         self.joint_attach_ke = 1.e+3
         self.joint_attach_kd = 1.e+2
 
+        self.lbs_verts_count = 0
         self.particle_count = 0
         self.body_count = 0
         self.shape_count = 0
@@ -681,6 +683,15 @@ class ModelBuilder:
         self.muscle_bodies = []
         self.muscle_points = []
 
+        # lbs
+        self.lbs_verts = []
+        self.lbs_faces = []
+        self.lbs_weights = []
+        self.lbs_weights = []
+        self.lbs_transforms = []
+        self.lbs_G = []
+        self.lbs_rest = []
+
         # rigid bodies
         self.body_mass = []
         self.body_inertia = []
@@ -901,7 +912,7 @@ class ModelBuilder:
         self.body_qd.append(wp.spatial_vector())
 
         self.body_name.append(body_name or f"body {child}")
-
+        # print(parent, joint_type.val, "joint_type.val")
         # joint data
         self.joint_type.append(joint_type.val)
         self.joint_parent.append(parent)
@@ -1496,6 +1507,17 @@ class ModelBuilder:
 
             self.add_edge(e.o0, e.o1, e.v0, e.v1, edge_ke=edge_ke, edge_kd=edge_kd)          # opposite 0, opposite 1, vertex 0, vertex 1
 
+    def add_lbs(self,
+           lbs_weights, lbs_transforms, lbs_G, lbs_rest, lbs_base_transform, lbs_scale, lbs_verts, lbs_faces):
+        self.lbs_weights.append(lbs_weights)
+        self.lbs_transforms.append(lbs_transforms)
+        self.lbs_G.append(lbs_G)
+        self.lbs_rest.append(lbs_rest)
+        self.lbs_verts.append(lbs_verts)
+        self.lbs_faces.append(lbs_faces)
+        self.lbs_base_transform = lbs_base_transform
+        self.lbs_scale = lbs_scale
+
     def add_cloth_mesh(self, pos: Vec3, rot: Quat, scale: float, vel: Vec3, vertices: List[Vec3], indices: List[int], density: float, edge_callback=None, face_callback=None,
                        tri_ke: float=default_tri_ke,
                        tri_ka: float=default_tri_ka,
@@ -2059,6 +2081,24 @@ class ModelBuilder:
             m.muscle_points = wp.array(self.muscle_points, dtype=wp.vec3)
             m.muscle_activation = wp.array(self.muscle_activation, dtype=wp.float32)
 
+
+            #-----------------------
+            # lbs
+            if len(self.lbs_faces) > 0:
+                m.lbs_verts_count = len(self.lbs_verts[0])
+                m.lbs_faces = wp.array(self.lbs_faces[0], dtype=wp.int32)
+                m.lbs_verts = wp.array(self.lbs_verts[0], dtype=wp.vec3)
+
+                m.lbs_weights = wp.array(self.lbs_weights[0], dtype=wp.float32)
+                m.lbs_transforms = wp.array(self.lbs_transforms[0], dtype=wp.mat44)
+                m.lbs_G = wp.array(self.lbs_G[0], dtype=wp.mat44)
+                m.lbs_rest = wp.array(self.lbs_rest[0], dtype=wp.vec4)
+                m.lbs_scale = self.lbs_scale
+                m.lbs_base_transform = self.lbs_base_transform
+                # print(self.lbs_weights[0].shape)
+                # print(m.lbs_weights.numpy().shape)
+                # exit()
+
             #--------------------------------------
             # rigid bodies
             
@@ -2124,9 +2164,11 @@ class ModelBuilder:
             m.spring_count = len(self.spring_rest_length)
             m.muscle_count = len(self.muscle_start)-1               # -1 due to sentinel value
             m.articulation_count = len(self.articulation_start)-1   # -1 due to sentinel value
+            m.lbs_count = len(self.lbs_verts)
             
             m.joint_dof_count = self.joint_dof_count
             m.joint_coord_count = self.joint_coord_count
+
             
             # hash-grid for particle interactions
             m.particle_grid = wp.HashGrid(128, 128, 128)

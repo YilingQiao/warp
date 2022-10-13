@@ -23,6 +23,7 @@ def eval_articulation_fk(
     joint_X_c: wp.array(dtype=wp.transform),
     joint_axis: wp.array(dtype=wp.vec3),
     body_com: wp.array(dtype=wp.vec3),
+    base_transform: wp.transform,
     # outputs
     body_q: wp.array(dtype=wp.transform),
     body_qd: wp.array(dtype=wp.spatial_vector)):
@@ -40,7 +41,7 @@ def eval_articulation_fk(
     for i in range(joint_start, joint_end):
 
         parent = joint_parent[i]
-        X_wp = wp.transform_identity()
+        X_wp = base_transform
         v_wp = wp.spatial_vector()
 
         if (parent >= 0):
@@ -158,8 +159,9 @@ def eval_articulation_fk(
             X_jc = t
             v_jc = v
 
-
-        X_wj = X_wp*X_pj
+        # X_wp parent, X_pj parent to joint, X_jc joint transform
+        X_wj = X_wp*X_pj 
+        # X_wc = X_jc
         X_wc = X_wj*X_jc
 
         # transform velocity across the joint to world space
@@ -175,6 +177,10 @@ def eval_articulation_fk(
 # updates state body information based on joint coordinates
 def eval_fk(model, joint_q, joint_qd, mask, state):
 
+    # print("state.body_q", state.body_q.numpy())
+    # print("model.joint_X_p", model.joint_X_p.numpy())
+    # print("=================")
+    # base_transform = wp.transform_identity()
     wp.launch(kernel=eval_articulation_fk,
                 dim=model.articulation_count,
                 inputs=[    
@@ -189,12 +195,14 @@ def eval_fk(model, joint_q, joint_qd, mask, state):
                 model.joint_X_p,
                 model.joint_X_c,
                 model.joint_axis,
-                model.body_com],
+                model.body_com,
+                model.lbs_base_transform],
                 outputs=[
                     state.body_q,
                     state.body_qd,
                 ],
                 device=model.device)
+    print(state.body_q.numpy(), "state.body_q")
 
 
 # returns the twist around an axis

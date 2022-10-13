@@ -31,6 +31,7 @@ from . integrator_xpbd import XPBDIntegrator
 
 from . collide import collide
 from . articulation import eval_fk, eval_ik
+from . lbs import parse_lbs, update_lbs
 
 from . import_mjcf import parse_mjcf
 from . import_urdf import parse_urdf
